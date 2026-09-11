@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluid Frequency Harmony Slider</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #2b2b2b;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #ffffff;
+      user-select: none;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 25px;
+      width: 80%; /* Dibuat jauh lebih lebar dan responsif */
+      max-width: 800px;
+    }
+
+    .hz-display {
+      font-size: 3rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #ff9800;
+      text-shadow: 0 0 12px rgba(255, 152, 0, 0.3);
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    /* Indikator visual saat posisi 'snap' ke oktaf pas */
+    .hz-display.snapped {
+      color: #ffb74d;
+      transform: scale(1.08);
+      text-shadow: 0 0 20px rgba(255, 152, 0, 0.8);
+    }
+
+    .hz-unit {
+      font-size: 1.4rem;
+      color: #888;
+      margin-left: 6px;
+    }
+
+    .slider-wrapper {
+      position: relative;
+      width: 100%;
+    }
+
+    /* Track slider */
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+
+    input[type=range]:focus {
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 10px;
+      cursor: pointer;
+      background: #444;
+      border-radius: 5px;
+      border: 1px solid #555;
+    }
+
+    /* Thumb / Button Slider Oranye */
+    input[type=range]::-webkit-slider-thumb {
+      height: 32px;
+      width: 32px;
+      border-radius: 50%;
+      background: #ff9800;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -11px;
+      box-shadow: 0 0 12px rgba(255, 152, 0, 0.5);
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* Animasi Fluid saat ditekan */
+    input[type=range]:active::-webkit-slider-thumb {
+      transform: scale(1.4);
+      background: #ffb74d;
+      box-shadow: 0 0 22px rgba(255, 152, 0, 0.9);
+    }
+
+    /* Detail Garis-Garis Oktaf */
+    .ticks {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 14px;
+      margin-top: 12px;
+    }
+
+    .tick {
+      width: 2px;
+      height: 12px;
+      background-color: #555;
+      border-radius: 1px;
+    }
+
+    .tick.active {
+      background-color: #ff9800;
+      box-shadow: 0 0 6px rgba(255, 152, 0, 0.6);
+    }
+
+    .hint {
+      font-size: 0.85rem;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="hz-display" id="displayBox">
+      <span id="hzValue">20</span><span class="hz-unit">Hz</span>
+    </div>
+
+    <div class="slider-wrapper">
+      <!-- Range dibuat presisi dari 0 sampai 1000 untuk pergerakan bebas -->
+      <input type="range" id="freqSlider" min="0" max="1000" value="0">
+      
+      <!-- Garis penanda 11 Oktaf -->
+      <div class="ticks">
+        <div class="tick active"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+        <div class="tick"></div>
+      </div>
+    </div>
+
+    <div class="hint">Geser slider dengan bebas (efek magnet saat mendekati titik oktaf)</div>
+  </div>
+
+  <script>
+    const octaves = [20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240, 20480];
+    const minHz = 20;
+    const maxHz = 20480;
+
+    const slider = document.getElementById('freqSlider');
+    const hzValue = document.getElementById('hzValue');
+    const displayBox = document.getElementById('displayBox');
+    const ticks = document.querySelectorAll('.tick');
+
+    // Web Audio API
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        oscillator = audioCtx.createOscillator();
+        gainNode = audioCtx.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(minHz, audioCtx.currentTime);
+        
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+      }
+    }
+
+    // Konversi nilai slider (0-1000) ke Logarithmic Hz
+    function sliderToHz(val) {
+      const minLog = Math.log(minHz);
+      const maxLog = Math.log(maxHz);
+      const scale = (maxLog - minLog) / 1000;
+      return Math.exp(minLog + scale * val);
+    }
+
+    slider.addEventListener('input', (e) => {
+      let rawHz = sliderToHz(e.target.value);
+      let finalHz = Math.round(rawHz);
+      let isSnapped = false;
+
+      // Logika "Magnet / Snap": Cek apakah frekuensi dekat dengan salah satu oktaf (toleransi 3.5%)
+      octaves.forEach((octaveHz, idx) => {
+        const diffPercent = Math.abs(rawHz - octaveHz) / octaveHz;
+        if (diffPercent < 0.035) {
+          finalHz = octaveHz;
+          isSnapped = true;
+
+          // Highlight tick yang pas
+          ticks.forEach((t, i) => t.classList.toggle('active', i <= idx));
+        }
+      });
+
+      // Efek visual saat posisi snap tepat di oktaf
+      if (isSnapped) {
+        displayBox.classList.add('snapped');
+      } else {
+        displayBox.classList.remove('snapped');
+      }
+
+      // Update angka realtime
+      hzValue.textContent = finalHz.toLocaleString('id-ID');
+
+      // Update frekuensi suara
+      if (audioCtx) {
+        oscillator.frequency.setTargetAtTime(finalHz, audioCtx.currentTime, 0.01);
+      }
+    });
+
+    window.addEventListener('pointerdown', () => {
+      initAudio();
+    }, { once: true });
+  </script>
+
+</body>
+</html>

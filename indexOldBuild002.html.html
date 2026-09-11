@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluid Frequency Harmony Slider</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #2b2b2b;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #ffffff;
+      user-select: none;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 85%;
+      max-width: 800px;
+    }
+
+    .hz-display {
+      font-size: 3.2rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #ff9800;
+      text-shadow: 0 0 12px rgba(255, 152, 0, 0.3);
+      transition: color 0.15s, transform 0.15s;
+    }
+
+    .hz-display.snapped {
+      color: #ffb74d;
+      transform: scale(1.08);
+      text-shadow: 0 0 22px rgba(255, 152, 0, 0.85);
+    }
+
+    .hz-unit {
+      font-size: 1.4rem;
+      color: #888;
+      margin-left: 6px;
+    }
+
+    .step-label {
+      font-size: 1.1rem;
+      color: #bbb;
+      margin-top: -10px;
+      font-weight: 600;
+    }
+
+    .controls-group {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    select {
+      padding: 9px 16px;
+      border-radius: 8px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      font-size: 0.95rem;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .mode-buttons {
+      display: flex;
+      gap: 8px;
+      background: #222;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid #444;
+    }
+
+    .mode-btn {
+      padding: 7px 14px;
+      border-radius: 6px;
+      background: transparent;
+      color: #aaa;
+      border: none;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: #ff9800;
+      color: #1a1a1a;
+      font-weight: 700;
+      box-shadow: 0 0 8px rgba(255, 152, 0, 0.4);
+    }
+
+    .slider-wrapper {
+      position: relative;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+      position: relative;
+      z-index: 2;
+    }
+
+    input[type=range]:focus {
+      outline: none;
+    }
+
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 10px;
+      cursor: pointer;
+      background: #444;
+      border-radius: 5px;
+      border: 1px solid #555;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      height: 32px;
+      width: 32px;
+      border-radius: 50%;
+      background: #ff9800;
+      cursor: pointer;
+      -webkit-appearance: none;
+      margin-top: -11px;
+      box-shadow: 0 0 12px rgba(255, 152, 0, 0.5);
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    input[type=range]:active::-webkit-slider-thumb {
+      transform: scale(1.35);
+      background: #ffb74d;
+      box-shadow: 0 0 22px rgba(255, 152, 0, 0.9);
+    }
+
+    /* Container Garis Tick Presisi */
+    .ticks {
+      position: relative;
+      width: calc(100% - 32px); /* Offset 32px presisi sesuai diameter thumb */
+      margin: 0 auto;
+      height: 14px;
+      margin-top: 10px;
+    }
+
+    .tick {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 12px;
+      background-color: #555;
+      border-radius: 1px;
+      transform: translateX(-50%);
+      transition: background-color 0.15s, box-shadow 0.15s, height 0.15s;
+    }
+
+    .tick.active {
+      background-color: #ff9800;
+      box-shadow: 0 0 8px rgba(255, 152, 0, 0.8);
+      height: 16px;
+    }
+
+    .hint {
+      font-size: 0.85rem;
+      color: #777;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="hz-display" id="displayBox">
+      <span id="hzValue">20</span><span class="hz-unit">Hz</span>
+    </div>
+    <div class="step-label" id="stepLabel">Step 0</div>
+
+    <div class="controls-group">
+      <select id="edoSelect">
+        <option value="1">1 EDO (Standard Octave)</option>
+        <option value="2">2 EDO (Tritone)</option>
+        <option value="3">3 EDO (Augmented)</option>
+        <option value="4">4 EDO (Diminished)</option>
+        <option value="5" selected>5 EDO (Slendro Pentatonic)</option>
+      </select>
+
+      <div class="mode-buttons">
+        <button type="button" class="mode-btn" id="btnSnapTotal">Snap Total</button>
+        <button type="button" class="mode-btn active" id="btnSnapRingan">Snap Ringan</button>
+      </div>
+    </div>
+
+    <div class="slider-wrapper">
+      <input type="range" id="freqSlider" min="0" max="35" step="0.001" value="0">
+      <div class="ticks" id="ticks"></div>
+    </div>
+
+    <div class="hint" id="edoResult">Geser slider untuk mengatur frekuensi</div>
+  </div>
+
+  <script>
+    const minHz = 20;
+    const edoMaxMap = { 1: 10, 2: 16, 3: 21, 4: 28, 5: 35 };
+    
+    // Toleransi Magnet Snap Ringan (sekitar ~22% lebar jarak antar step)
+    const SNAP_TOLERANCE = 0.22;
+
+    let snapMode = 'ringan'; // 'total' | 'ringan'
+
+    const edoSelect = document.getElementById('edoSelect');
+    const slider = document.getElementById('freqSlider');
+    const hzValue = document.getElementById('hzValue');
+    const displayBox = document.getElementById('displayBox');
+    const stepLabel = document.getElementById('stepLabel');
+    const edoResult = document.getElementById('edoResult');
+    const ticksWrap = document.getElementById('ticks');
+    const btnSnapTotal = document.getElementById('btnSnapTotal');
+    const btnSnapRingan = document.getElementById('btnSnapRingan');
+
+    // Web Audio API
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        oscillator = audioCtx.createOscillator();
+        gainNode = audioCtx.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(minHz, audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+      }
+    }
+
+    // Generator Garis Tick Presisi
+    function buildTicks(max) {
+      ticksWrap.innerHTML = '';
+      for (let i = 0; i <= max; i++) {
+        const t = document.createElement('div');
+        t.className = 'tick';
+        // Hitung posisi persentase presisi dari 0% sampai 100%
+        const percent = (i / max) * 100;
+        t.style.left = percent + '%';
+        ticksWrap.appendChild(t);
+      }
+    }
+
+    function updateActiveTick(nearestStep, isSnapped) {
+      const allTicks = ticksWrap.querySelectorAll('.tick');
+      allTicks.forEach((t, i) => {
+        if (isSnapped && i === nearestStep) {
+          t.classList.add('active');
+        } else {
+          t.classList.remove('active');
+        }
+      });
+    }
+
+    function updateDisplay() {
+      const edo = parseInt(edoSelect.value);
+      const rawStep = parseFloat(slider.value);
+      const nearestStep = Math.round(rawStep);
+
+      let effectiveStep = rawStep;
+      let isSnapped = false;
+
+      if (snapMode === 'total') {
+        // Mode Snap Total: Terkunci rapat ke step bulat terdekat
+        effectiveStep = nearestStep;
+        isSnapped = true;
+      } else {
+        // Mode Snap Ringan: Magnet aktif saat kursor mendekati titik step
+        const distance = Math.abs(rawStep - nearestStep);
+        if (distance < SNAP_TOLERANCE) {
+          effectiveStep = nearestStep;
+          isSnapped = true;
+        }
+      }
+
+      // Rumus EDO: f = f0 * 2^(step / EDO)
+      const freq = Math.round(minHz * Math.pow(2, effectiveStep / edo));
+
+      hzValue.textContent = freq.toLocaleString('id-ID');
+      
+      if (isSnapped) {
+        stepLabel.textContent = `Step ${effectiveStep}`;
+        edoResult.textContent = `Step Terkunci: ${effectiveStep} | Frekuensi: ${freq} Hz`;
+        displayBox.classList.add('snapped');
+      } else {
+        stepLabel.textContent = `Step ${effectiveStep.toFixed(2)}`;
+        edoResult.textContent = `Bebas (Antara Step) | Frekuensi: ${freq} Hz`;
+        displayBox.classList.remove('snapped');
+      }
+
+      updateActiveTick(nearestStep, isSnapped);
+
+      if (audioCtx) {
+        oscillator.frequency.setTargetAtTime(freq, audioCtx.currentTime, 0.015);
+      }
+    }
+
+    function setSnapMode(mode) {
+      snapMode = mode;
+      btnSnapTotal.classList.toggle('active', mode === 'total');
+      btnSnapRingan.classList.toggle('active', mode === 'ringan');
+      updateDisplay();
+    }
+
+    btnSnapTotal.addEventListener('click', () => setSnapMode('total'));
+    btnSnapRingan.addEventListener('click', () => setSnapMode('ringan'));
+
+    edoSelect.addEventListener('change', () => {
+      const edo = parseInt(edoSelect.value);
+      const max = edoMaxMap[edo];
+      slider.max = max;
+      slider.value = 0;
+      buildTicks(max);
+      updateDisplay();
+    });
+
+    slider.addEventListener('input', updateDisplay);
+
+    window.addEventListener('pointerdown', () => {
+      initAudio();
+    }, { once: true });
+
+    // Inisialisasi awal
+    const initialEdo = parseInt(edoSelect.value);
+    slider.max = edoMaxMap[initialEdo];
+    buildTicks(parseInt(slider.max));
+    updateDisplay();
+  </script>
+
+</body>
+</html>
